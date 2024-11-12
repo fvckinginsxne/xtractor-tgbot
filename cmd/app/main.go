@@ -4,16 +4,16 @@ import (
 	"flag"
 	"log"
 
-	"bot/clients/tgclient"
-	"bot/consumer/eventconsumer"
-	"bot/events/eventprocessor"
-	"bot/storage/sqlite"
+	"bot/internal/clients/tgclient"
+	"bot/internal/consumer/eventconsumer"
+	"bot/internal/listener"
+	"bot/pkg/storage/sqlite"
 )
 
 const (
 	batchSize       = 100
 	hostname        = "api.telegram.org"
-	storageBasePath = "data/sqlite/storage.db"
+	storageBasePath = "../../data/sqlite/storage.db"
 )
 
 func main() {
@@ -26,14 +26,14 @@ func main() {
 		log.Fatal("can't init storage: ", err)
 	}
 
-	eventprocessor := eventprocessor.New(
+	eventprocessor := listener.New(
 		tgclient.New(hostname, mustToken()),
 		storage,
 	)
 
 	log.Printf("service started")
 
-	consumer := eventconsumer.New(eventprocessor, eventprocessor, batchSize)
+	consumer := eventconsumer.New(*eventprocessor, batchSize)
 
 	if err := consumer.Start(); err != nil {
 		log.Fatal("service stoped")

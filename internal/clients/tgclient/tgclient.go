@@ -8,6 +8,7 @@ import (
 	"path"
 	"strconv"
 
+	"bot/internal/core"
 	"bot/lib/e"
 )
 
@@ -30,7 +31,7 @@ func New(host string, token string) *Client {
 	}
 }
 
-func (c *Client) Updates(offset, limit int) ([]Update, error) {
+func (c *Client) Updates(offset, limit int) ([]core.Update, error) {
 	q := url.Values{}
 	q.Add("offset", strconv.Itoa(offset))
 	q.Add("limit", strconv.Itoa(limit))
@@ -40,7 +41,7 @@ func (c *Client) Updates(offset, limit int) ([]Update, error) {
 		return nil, e.Wrap("can't get updates", err)
 	}
 
-	var res UpdatesResponse
+	var res core.UpdatesResponse
 
 	if err := json.Unmarshal(data, &res); err != nil {
 		return nil, e.Wrap("can't parse json with updates", err)

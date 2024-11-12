@@ -5,29 +5,26 @@ import (
 	"log"
 	"time"
 
-	"bot/events"
-	"bot/events/eventprocessor"
+	"bot/internal/core"
+	"bot/internal/listener"
 )
 
 type Consumer struct {
-	fetcher   events.Fetcher
-	processor events.Processor
-	batchSize int
+	eventprocessor listener.Listener
+	batchSize      int
 }
 
-func New(fetcher events.Fetcher, processor events.Processor,
-	batchSize int) *Consumer {
+func New(eventprocessor listener.Listener, batchSize int) *Consumer {
 	return &Consumer{
-		fetcher:   fetcher,
-		processor: processor,
-		batchSize: batchSize,
+		eventprocessor: eventprocessor,
+		batchSize:      batchSize,
 	}
 }
 
 func (c Consumer) Start() error {
 	for {
-		gotEvents, err := c.fetcher.Fetch(c.batchSize)
-		if err != nil && !errors.Is(err, eventprocessor.ErrNoUpdates) {
+		gotEvents, err := c.eventprocessor.Fetch(c.batchSize)
+		if err != nil && !errors.Is(err, listener.ErrNoUpdates) {
 			log.Printf("consumer: %s", err.Error())
 
 			continue
@@ -45,11 +42,11 @@ func (c Consumer) Start() error {
 	}
 }
 
-func (c Consumer) handleEvents(events []events.Event) error {
+func (c Consumer) handleEvents(events []core.Event) error {
 	for _, event := range events {
 		log.Printf("got new event: %s", event.Text)
 
-		if err := c.processor.Process(event); err != nil {
+		if err := c.eventprocessor.Process(event); err != nil {
 			log.Printf("can't handle event: %s", err.Error())
 		}
 	}

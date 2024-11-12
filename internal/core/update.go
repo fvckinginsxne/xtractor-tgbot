@@ -1,4 +1,4 @@
-package tgclient
+package core
 
 type UpdatesResponse struct {
 	Ok     bool     `json:"ok"`

@@ -1,4 +1,4 @@
-package eventprocessor
+package listener
 
 const msgHelp = `Я могу сохранять и хранить твои статьи, видео, файлы.
 

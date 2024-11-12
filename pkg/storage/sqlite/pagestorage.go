@@ -3,8 +3,9 @@ package sqlite
 import (
 	"database/sql"
 
+	"bot/internal/core"
 	"bot/lib/e"
-	"bot/storage"
+	"bot/pkg/storage"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -26,7 +27,7 @@ func New(path string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s Storage) Save(p *storage.Page) error {
+func (s Storage) Save(p *core.Page) error {
 	q := "INSERT INTO pages (url, user_name) VALUES (?, ?)"
 
 	if _, err := s.db.Exec(q, p.URL, p.Username); err != nil {
@@ -36,7 +37,7 @@ func (s Storage) Save(p *storage.Page) error {
 	return nil
 }
 
-func (s Storage) PickRandom(username string) (*storage.Page, error) {
+func (s Storage) PickRandom(username string) (*core.Page, error) {
 	q := "SELECT url FROM pages WHERE user_name = ? ORDER BY RANDOM() LIMIT 1"
 
 	var url string
@@ -50,13 +51,13 @@ func (s Storage) PickRandom(username string) (*storage.Page, error) {
 		return nil, e.Wrap("can't get random page", err)
 	}
 
-	return &storage.Page{
+	return &core.Page{
 		URL:      url,
 		Username: username,
 	}, nil
 }
 
-func (s Storage) Remove(p *storage.Page) error {
+func (s Storage) Remove(p *core.Page) error {
 	q := "DELETE FROM pages WHERE url = ? AND user_name = ?"
 
 	if _, err := s.db.Exec(q, p.URL, p.Username); err != nil {
@@ -66,7 +67,7 @@ func (s Storage) Remove(p *storage.Page) error {
 	return nil
 }
 
-func (s Storage) IsExists(p *storage.Page) (bool, error) {
+func (s Storage) IsExists(p *core.Page) (bool, error) {
 	q := "SELECT COUNT(*) FROM pages WHERE url = ? AND user_name = ?"
 
 	var count int
