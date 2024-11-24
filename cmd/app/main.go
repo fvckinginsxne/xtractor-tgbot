@@ -26,10 +26,9 @@ func main() {
 		log.Fatal("can't init storage: ", err)
 	}
 
-	eventprocessor := listener.New(
-		tgclient.New(hostname, mustToken()),
-		storage,
-	)
+	tgclient := tgclient.New(hostname, mustToken())
+
+	eventprocessor := listener.New(tgclient, storage)
 
 	log.Printf("service started")
 
