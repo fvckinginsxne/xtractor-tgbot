@@ -1,14 +1,12 @@
 package listener
 
 import (
-	"errors"
 	"log"
 	"net/url"
 	"strings"
 
 	"bot/internal/core"
 	"bot/lib/e"
-	"bot/pkg/storage"
 )
 
 const (
@@ -23,12 +21,10 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 	log.Printf("got new command '%s' from %s", text, username)
 
 	if isAddCmd(text) {
-		return l.savePage(text, chatID, username)
+		return l.saveVideo(text, chatID, username)
 	}
 
 	switch text {
-	case RndCmd:
-		return l.sendRandomPage(chatID, username)
 	case HelpCmd:
 		return l.sendHelp(chatID)
 	case StartCmd:
@@ -38,46 +34,36 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 	}
 }
 
-func (l *Listener) savePage(pageURL string, chatID int, username string) error {
-	page := &core.Page{
-		URL:      pageURL,
+func (l *Listener) saveVideo(videoURL string, chatID int, username string) (err error) {
+	defer func() { err = e.Wrap("can't save video", err) }()
+
+	video := &core.Video{
+		URL:      videoURL,
 		Username: username,
 	}
 
-	isExists, err := l.storage.IsExists(page)
+	isExists, err := l.storage.IsExists(video)
 	if err != nil {
-		return e.Wrap("can't save page", err)
+		return err
 	}
 
 	if isExists {
 		return l.tg.SendMessage(chatID, msgAlreadyExists)
 	}
 
-	if err := l.storage.Save(page); err != nil {
-		return e.Wrap("can't save page", err)
+	if err := video.DownloadSource(); err != nil {
+		return err
 	}
+
+	if err := l.storage.Save(video); err != nil {
+		return err
+	}
+
 	if err := l.tg.SendMessage(chatID, msgSaved); err != nil {
-		return e.Wrap("can't save page", err)
+		return err
 	}
 
 	return nil
-}
-
-func (l *Listener) sendRandomPage(chatID int, username string) error {
-	page, err := l.storage.PickRandom(username)
-	if err != nil && !errors.Is(err, storage.ErrNoSavedPage) {
-		return e.Wrap("can't send random message", err)
-	}
-
-	if errors.Is(err, storage.ErrNoSavedPage) {
-		return l.tg.SendMessage(chatID, msgNoSavedPages)
-	}
-
-	if err := l.tg.SendMessage(chatID, page.URL); err != nil {
-		return e.Wrap("can't send random page", err)
-	}
-
-	return l.storage.Remove(page)
 }
 
 func (l *Listener) sendHelp(chatID int) error {

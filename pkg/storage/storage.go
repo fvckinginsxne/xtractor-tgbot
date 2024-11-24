@@ -6,11 +6,10 @@ import (
 	"bot/internal/core"
 )
 
-var ErrNoSavedPage = errors.New("no saved page")
+var ErrNoSavedPage = errors.New("no saved sources")
 
 type Storage interface {
-	Save(p *core.Page) error
-	PickRandom(username string) (*core.Page, error)
-	Remove(p *core.Page) error
-	IsExists(p *core.Page) (bool, error)
+	Save(p *core.Video) error
+	Remove(p *core.Video) error
+	IsExists(p *core.Video) (bool, error)
 }
