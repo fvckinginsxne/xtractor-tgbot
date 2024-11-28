@@ -37,12 +37,12 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 func (l *Listener) saveVideo(videoURL string, chatID int, username string) (err error) {
 	defer func() { err = e.Wrap("can't save video", err) }()
 
-	video := &core.Video{
+	audio := &core.Audio{
 		URL:      videoURL,
 		Username: username,
 	}
 
-	isExists, err := l.storage.IsExists(video)
+	isExists, err := l.storage.IsExists(audio)
 	if err != nil {
 		return err
 	}
@@ -51,11 +51,11 @@ func (l *Listener) saveVideo(videoURL string, chatID int, username string) (err 
 		return l.tg.SendMessage(chatID, msgAlreadyExists)
 	}
 
-	if err := video.DownloadSource(); err != nil {
+	if err := audio.DownloadSource(); err != nil {
 		return err
 	}
 
-	if err := l.storage.Save(video); err != nil {
+	if err := l.storage.Save(audio); err != nil {
 		return err
 	}
 

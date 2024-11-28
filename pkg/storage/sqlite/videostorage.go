@@ -9,11 +9,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type VideoStorage struct {
+type AudioStorage struct {
 	db *sql.DB
 }
 
-func New(path string) (*VideoStorage, error) {
+func New(path string) (*AudioStorage, error) {
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, e.Wrap("can't open database", err)
@@ -23,11 +23,11 @@ func New(path string) (*VideoStorage, error) {
 		return nil, e.Wrap("can't connect to database", err)
 	}
 
-	return &VideoStorage{db: db}, nil
+	return &AudioStorage{db: db}, nil
 }
 
-func (s VideoStorage) Save(p *core.Video) error {
-	q := "INSERT INTO videos (url, user_name) VALUES (?, ?)"
+func (s AudioStorage) Save(p *core.Audio) error {
+	q := "INSERT INTO audios (url, user_name) VALUES (?, ?)"
 
 	if _, err := s.db.Exec(q, p.URL, p.Username); err != nil {
 		return e.Wrap("cant't save page", err)
@@ -36,8 +36,8 @@ func (s VideoStorage) Save(p *core.Video) error {
 	return nil
 }
 
-func (s VideoStorage) Remove(p *core.Video) error {
-	q := "DELETE FROM videos WHERE url = ? AND user_name = ?"
+func (s AudioStorage) Remove(p *core.Audio) error {
+	q := "DELETE FROM audios WHERE url = ? AND user_name = ?"
 
 	if _, err := s.db.Exec(q, p.URL, p.Username); err != nil {
 		return e.Wrap("can't remove page", err)
@@ -46,8 +46,8 @@ func (s VideoStorage) Remove(p *core.Video) error {
 	return nil
 }
 
-func (s VideoStorage) IsExists(p *core.Video) (bool, error) {
-	q := "SELECT COUNT(*) FROM videos WHERE url = ? AND user_name = ?"
+func (s AudioStorage) IsExists(p *core.Audio) (bool, error) {
+	q := "SELECT COUNT(*) FROM audios WHERE url = ? AND user_name = ?"
 
 	var count int
 
@@ -59,8 +59,8 @@ func (s VideoStorage) IsExists(p *core.Video) (bool, error) {
 	return count > 0, nil
 }
 
-func (s VideoStorage) Init() error {
-	q := "CREATE TABLE IF NOT EXISTS videos (url TEXT, user_name TEXT)"
+func (s AudioStorage) Init() error {
+	q := "CREATE TABLE IF NOT EXISTS audios (url TEXT, user_name TEXT)"
 
 	if _, err := s.db.Exec(q); err != nil {
 		return e.Wrap("can't create table", err)

@@ -9,7 +9,7 @@ import (
 var ErrNoSavedPage = errors.New("no saved sources")
 
 type Storage interface {
-	Save(p *core.Video) error
-	Remove(p *core.Video) error
-	IsExists(p *core.Video) (bool, error)
+	Save(p *core.Audio) error
+	Remove(p *core.Audio) error
+	IsExists(p *core.Audio) (bool, error)
 }
