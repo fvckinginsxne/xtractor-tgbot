@@ -13,7 +13,8 @@ const msgHello = "Привет-медвед! \n\n" + msgHelp
 
 const (
 	msgUnknownCmd    = "Неизвестная команда!"
-	msgNoSavedPages  = "У вас нет сохраненных страниц"
+	msgNoSavedPages  = "У вас нет сохраненных страниц."
 	msgSaved         = "Сохранено!"
+	msgProcessing    = "Обработка... Пожалуйста подождите."
 	msgAlreadyExists = "Данная страница уже сохранена!"
 )

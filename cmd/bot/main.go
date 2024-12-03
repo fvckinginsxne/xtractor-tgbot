@@ -1,56 +1,54 @@
 package main
 
 import (
-	"flag"
 	"log"
+	"os"
 
 	"bot/internal/clients/tgclient"
+	"bot/internal/config"
 	"bot/internal/consumer/eventconsumer"
 	"bot/internal/listener"
-	"bot/pkg/storage/sqlite"
+	"bot/pkg/storage/sqlite/audiostorage"
+	"bot/pkg/storage/sqlite/userstorage"
 )
 
 const (
-	batchSize       = 100
-	hostname        = "api.telegram.org"
-	storageBasePath = "../../data/sqlite/storage.db"
+	batchSize = 100
 )
 
 func main() {
-	storage, err := sqlite.New(storageBasePath)
-	if err != nil {
-		log.Fatal("can't connect to storage: ", err)
-	}
-
-	if err := storage.Init(); err != nil {
-		log.Fatal("can't init storage: ", err)
-	}
-
-	tgclient := tgclient.New(hostname, mustToken())
-
-	eventprocessor := listener.New(tgclient, storage)
-
 	log.Printf("service started")
 
-	consumer := eventconsumer.New(*eventprocessor, batchSize)
+	cfg, err := config.Init()
+	if err != nil {
+		log.Fatal("can't init config: ", err)
+	}
+
+	audioStorage, err := audiostorage.New(cfg.StoragePath)
+	if err != nil {
+		log.Fatal("can't connect to audio storage: ", err)
+	}
+
+	userStorage, err := userstorage.New(cfg.StoragePath)
+	if err != nil {
+		log.Fatal("can't connect to user storage")
+	}
+
+	if err := audioStorage.Init(); err != nil {
+		log.Fatal("can't init audio storage: ", err)
+	}
+
+	if err := userStorage.Init(); err != nil {
+		log.Fatal("can't init user storage: ", err)
+	}
+
+	tgclient := tgclient.New(cfg.Hostname, os.Getenv("TOKEN"))
+
+	listener := listener.New(tgclient, audioStorage, userStorage)
+
+	consumer := eventconsumer.New(*listener, batchSize)
 
 	if err := consumer.Start(); err != nil {
-		log.Fatal("service stoped")
+		log.Fatal("service stopped")
 	}
-}
-
-func mustToken() string {
-	token := flag.String(
-		"t",
-		"",
-		"token for access to telegram bot",
-	)
-
-	flag.Parse()
-
-	if *token == "" {
-		log.Fatal("token is not specified")
-	}
-
-	return *token
 }

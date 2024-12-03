@@ -21,7 +21,7 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 	log.Printf("got new command '%s' from %s", text, username)
 
 	if isAddCmd(text) {
-		return l.saveVideo(text, chatID, username)
+		return l.saveAudio(text, chatID, username)
 	}
 
 	switch text {
@@ -34,15 +34,14 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 	}
 }
 
-func (l *Listener) saveVideo(videoURL string, chatID int, username string) (err error) {
+func (l *Listener) saveAudio(videoURL string, chatID int, username string) (err error) {
 	defer func() { err = e.Wrap("can't save video", err) }()
 
 	audio := &core.Audio{
-		URL:      videoURL,
-		Username: username,
+		URL: videoURL,
 	}
 
-	isExists, err := l.storage.IsExists(audio)
+	isExists, err := l.audioStorage.IsExists(audio, username)
 	if err != nil {
 		return err
 	}
@@ -51,11 +50,15 @@ func (l *Listener) saveVideo(videoURL string, chatID int, username string) (err 
 		return l.tg.SendMessage(chatID, msgAlreadyExists)
 	}
 
+	if err := l.tg.SendMessage(chatID, msgProcessing); err != nil {
+		return err
+	}
+
 	if err := audio.DownloadSource(); err != nil {
 		return err
 	}
 
-	if err := l.storage.Save(audio); err != nil {
+	if err := l.audioStorage.Save(audio, username); err != nil {
 		return err
 	}
 

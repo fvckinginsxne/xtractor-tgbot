@@ -11,9 +11,9 @@ import (
 )
 
 type Audio struct {
-	URL      string
-	Source   []byte
-	Username string
+	URL   string
+	Data  []byte
+	Title string
 }
 
 func (v *Audio) DownloadSource() error {
@@ -31,7 +31,7 @@ func (v *Audio) DownloadSource() error {
 }
 
 func (v *Audio) download() error {
-	outputFile := fmt.Sprintf("%s.mp3", v.URL)
+	outputFile := fmt.Sprintf("%s.wav", "output")
 
 	err := v.downloadVideoWithYTDLP(outputFile)
 	if err != nil {
@@ -43,20 +43,35 @@ func (v *Audio) download() error {
 		return e.Wrap("failed to read downloaded video file", err)
 	}
 
-	v.Source = videoData
+	v.Data = videoData
 
-	//defer os.Remove(outputFile)
+	defer os.Remove(outputFile)
 
 	return nil
 }
 
 func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
-	proxyURL := "http://DsGBKX:vyJezg@45.91.209.152:13162"
+	proxyURL := os.Getenv("PROXY_URL")
 
 	_, err := exec.LookPath("yt-dlp")
 	if err != nil {
-		return e.Wrap("yt-dlp not found: make sure it is installed and in your PATH", err)
+		return e.Wrap("yt-dlp not found", err)
 	}
+
+	titleCmd := exec.Command(
+		"yt-dlp",
+		"--print", "title",
+		"--proxy", proxyURL,
+		"--cookies-from-browser", "chrome",
+		v.URL,
+	)
+
+	titleOutput, err := titleCmd.Output()
+	if err != nil {
+		return e.Wrap("failed to get video title", err)
+	}
+
+	v.Title = string(titleOutput)
 
 	cmdArgs := []string{
 		"-x",
@@ -64,6 +79,9 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		"--proxy", proxyURL,
 		"--cookies-from-browser", "chrome",
 		"--no-post-overwrites",
+		"--retries", "10", // Повторить попытку до 10 раз
+		"--fragment-retries", "10", // Повторять попытку при сбое фрагмента
+		"--socket-timeout", "30",
 		"-o", outputFile,
 		v.URL,
 	}
@@ -83,14 +101,10 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		if err != nil {
 			fmt.Printf("yt-dlp command failed: %v\n", err)
 		}
-	case <-time.After(30 * time.Second): // Устанавливаем таймаут 30 секунд
+	case <-time.After(30 * time.Second):
 		fmt.Println("yt-dlp process timed out")
-		cmd.Process.Kill() // Убиваем процесс, если он не завершился
+		cmd.Process.Kill()
 	}
-
-	// if err := cmd.Run(); err != nil {
-	// 	return e.Wrap("yt-dlp command failed", err)
-	// }
 
 	return nil
 }

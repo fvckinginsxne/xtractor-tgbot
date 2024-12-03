@@ -6,13 +6,15 @@ import (
 	"bot/internal/clients/tgclient"
 	"bot/internal/core"
 	"bot/lib/e"
-	"bot/pkg/storage"
+	"bot/pkg/storage/sqlite/audiostorage"
+	"bot/pkg/storage/sqlite/userstorage"
 )
 
 type Listener struct {
-	tg      *tgclient.Client
-	offset  int
-	storage storage.Storage
+	tg           *tgclient.Client
+	offset       int
+	audioStorage *audiostorage.AudioStorage
+	userStorage  *userstorage.UserStorage
 }
 
 type Meta struct {
@@ -24,12 +26,15 @@ var (
 	ErrNoUpdates        = errors.New("no updates")
 	ErrUnknownEventType = errors.New("unknown event type")
 	ErrUnknownMetaType  = errors.New("unknown meta type")
+	ErrUserAlreadySaved = errors.New("user is already saved")
 )
 
-func New(client *tgclient.Client, storage storage.Storage) *Listener {
+func New(client *tgclient.Client, audioStorage *audiostorage.AudioStorage,
+	userStorage *userstorage.UserStorage) *Listener {
 	return &Listener{
-		tg:      client,
-		storage: storage,
+		tg:           client,
+		audioStorage: audioStorage,
+		userStorage:  userStorage,
 	}
 }
 
