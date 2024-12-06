@@ -31,7 +31,7 @@ func (v *Audio) DownloadSource() error {
 }
 
 func (v *Audio) download() error {
-	outputFile := fmt.Sprintf("%s.wav", "output")
+	outputFile := fmt.Sprintf("%s.mp3", "output")
 
 	err := v.downloadVideoWithYTDLP(outputFile)
 	if err != nil {
@@ -75,7 +75,7 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 
 	cmdArgs := []string{
 		"-x",
-		"--audio-format", "wav",
+		"--audio-format", "mp3",
 		"--proxy", proxyURL,
 		"--cookies-from-browser", "chrome",
 		"--no-post-overwrites",

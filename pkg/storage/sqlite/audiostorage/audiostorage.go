@@ -27,48 +27,6 @@ func New(path string) (*AudioStorage, error) {
 	return &AudioStorage{db: db}, nil
 }
 
-func (s AudioStorage) Save(a *core.Audio, username string) error {
-	userID, err := s.GetOrCreateUserID(username)
-	if err != nil {
-		return e.Wrap("can't get user id", err)
-	}
-
-	q := `INSERT INTO audios (url, data, title, user_id) VALUES (?, ?, ?, ?)`
-
-	if _, err = s.db.Exec(q, a.URL, a.Data, a.Title, userID); err != nil {
-		return e.Wrap("can't save audio", err)
-	}
-
-	return nil
-}
-
-func (s AudioStorage) Remove(a *core.Audio) error {
-	q := `DELETE FROM audios WHERE url = ?`
-
-	if _, err := s.db.Exec(q, a.URL); err != nil {
-		return e.Wrap("can't remove audio", err)
-	}
-
-	return nil
-}
-
-func (s AudioStorage) IsExists(a *core.Audio, username string) (bool, error) {
-	userID, err := s.GetOrCreateUserID(username)
-	if err != nil {
-		return false, e.Wrap("can't check if audio is exists", err)
-	}
-
-	q := `SELECT COUNT(*) FROM audios WHERE url = ? AND user_id = ?`
-
-	var count int
-
-	if err = s.db.QueryRow(q, a.URL, userID).Scan(&count); err != nil {
-		return false, e.Wrap("can't check if audio is exists", err)
-	}
-
-	return count > 0, nil
-}
-
 func (s AudioStorage) Init() error {
 	q := `CREATE TABLE IF NOT EXISTS audios (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,7 +44,49 @@ func (s AudioStorage) Init() error {
 	return nil
 }
 
-func (s AudioStorage) GetOrCreateUserID(username string) (int64, error) {
+func (s AudioStorage) Save(audio *core.Audio, username string) error {
+	userID, err := s.GetOrCreateUser(username)
+	if err != nil {
+		return e.Wrap("can't get user id", err)
+	}
+
+	q := `INSERT INTO audios (url, data, title, user_id) VALUES (?, ?, ?, ?)`
+
+	if _, err = s.db.Exec(q, audio.URL, audio.Data, audio.Title, userID); err != nil {
+		return e.Wrap("can't save audio", err)
+	}
+
+	return nil
+}
+
+// func (s AudioStorage) Remove(a *core.Audio) error {
+// 	q := `DELETE FROM audios WHERE url = ?`
+
+// 	if _, err := s.db.Exec(q, a.URL); err != nil {
+// 		return e.Wrap("can't remove audio", err)
+// 	}
+
+// 	return nil
+// }
+
+func (s AudioStorage) IsExists(audio *core.Audio, username string) (bool, error) {
+	userID, err := s.GetOrCreateUser(username)
+	if err != nil {
+		return false, e.Wrap("can't check if audio is exists", err)
+	}
+
+	q := `SELECT COUNT(*) FROM audios WHERE url = ? AND user_id = ?`
+
+	var count int
+
+	if err = s.db.QueryRow(q, audio.URL, userID).Scan(&count); err != nil {
+		return false, e.Wrap("can't check if audio is exists", err)
+	}
+
+	return count > 0, nil
+}
+
+func (s AudioStorage) GetOrCreateUser(username string) (int64, error) {
 	q := `SELECT id FROM users WHERE username = ?`
 
 	var userID int64
@@ -111,4 +111,34 @@ func (s AudioStorage) GetOrCreateUserID(username string) (int64, error) {
 	}
 
 	return userID, nil
+}
+
+func (s AudioStorage) Playlist(username string) ([]core.Audio, error) {
+	q := `SELECT a.url, a.data, a.title FROM audios a
+		  JOIN users u ON a.user_id = u.id  WHERE u.username = ?`
+
+	rows, err := s.db.Query(q, username)
+	if err != nil {
+		return nil, e.Wrap("can't join tables by user id", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var audios []core.Audio
+
+	for rows.Next() {
+		var audio core.Audio
+
+		err := rows.Scan(&audio.URL, &audio.Data, &audio.Title)
+		if err != nil {
+			return nil, e.Wrap("can't scan audio", err)
+		}
+
+		audios = append(audios, audio)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, e.Wrap("error during rows iteration", err)
+	}
+
+	return audios, nil
 }

@@ -13,6 +13,7 @@ const (
 	RndCmd   = "/rnd"
 	HelpCmd  = "/help"
 	StartCmd = "/start"
+	ListCmd  = "/list"
 )
 
 func (l *Listener) doCmd(text string, chatID int, username string) error {
@@ -29,6 +30,8 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 		return l.sendHelp(chatID)
 	case StartCmd:
 		return l.sendGreeting(chatID)
+	case ListCmd:
+		return l.sendPlaylist(chatID, username)
 	default:
 		return l.tg.SendMessage(chatID, msgUnknownCmd)
 	}
@@ -64,6 +67,27 @@ func (l *Listener) saveAudio(videoURL string, chatID int, username string) (err 
 
 	if err := l.tg.SendMessage(chatID, msgSaved); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (l *Listener) sendPlaylist(chatID int, username string) error {
+	audios, err := l.audioStorage.Playlist(username)
+	if err != nil {
+		return e.Wrap("can't get playlist", err)
+	}
+
+	if len(audios) == 0 {
+		return l.tg.SendMessage(chatID, msgEmptyPlaylist)
+	}
+
+	for _, audio := range audios {
+		log.Printf("Sending audio: Title=%s, DataSize=%d bytes", audio.Title, len(audio.Data))
+		if err := l.tg.SendAudio(chatID, audio.Data, audio.Title); err != nil {
+			return err
+		}
+		log.Printf("Successfully sent audio: %s", audio.Title)
 	}
 
 	return nil

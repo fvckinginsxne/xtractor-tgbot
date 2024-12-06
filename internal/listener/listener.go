@@ -26,7 +26,6 @@ var (
 	ErrNoUpdates        = errors.New("no updates")
 	ErrUnknownEventType = errors.New("unknown event type")
 	ErrUnknownMetaType  = errors.New("unknown meta type")
-	ErrUserAlreadySaved = errors.New("user is already saved")
 )
 
 func New(client *tgclient.Client, audioStorage *audiostorage.AudioStorage,
