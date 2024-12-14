@@ -8,8 +8,8 @@ import (
 	"bot/internal/config"
 	"bot/internal/consumer/eventconsumer"
 	"bot/internal/listener"
-	"bot/pkg/storage/sqlite/audiostorage"
-	"bot/pkg/storage/sqlite/userstorage"
+	"bot/pkg/sqlite/audiostorage"
+	"bot/pkg/sqlite/userstorage"
 )
 
 const (

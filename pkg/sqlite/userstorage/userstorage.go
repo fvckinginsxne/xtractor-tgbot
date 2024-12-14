@@ -3,7 +3,7 @@ package userstorage
 import (
 	"database/sql"
 
-	"bot/lib/e"
+	"bot/pkg/tech/e"
 )
 
 type UserStorage struct {
@@ -34,4 +34,16 @@ func (s UserStorage) Init() error {
 	}
 
 	return nil
+}
+
+func (s UserStorage) UsernameByUserID(userID int64) (string, error) {
+	q := `SELECT username FROM users WHERE id = ?`
+
+	var username string
+
+	if err := s.db.QueryRow(q, userID).Scan(&username); err != nil {
+		return "", e.Wrap("can't get username by user id", err)
+	}
+
+	return username, nil
 }

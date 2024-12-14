@@ -5,9 +5,10 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
-	"bot/lib/e"
+	"bot/pkg/tech/e"
 )
 
 type Audio struct {
@@ -16,11 +17,10 @@ type Audio struct {
 	Title string
 }
 
-func (v *Audio) DownloadSource() error {
+func (v *Audio) DownloadData() error {
 	log.Printf("downloading...")
 
 	err := v.download()
-
 	if err != nil {
 		return e.Wrap("can't download video", err)
 	}
@@ -53,6 +53,8 @@ func (v *Audio) download() error {
 func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 	proxyURL := os.Getenv("PROXY_URL")
 
+	log.Println(proxyURL)
+
 	_, err := exec.LookPath("yt-dlp")
 	if err != nil {
 		return e.Wrap("yt-dlp not found", err)
@@ -71,7 +73,7 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		return e.Wrap("failed to get video title", err)
 	}
 
-	v.Title = string(titleOutput)
+	v.Title = strings.TrimRight(string(titleOutput), "\n")
 
 	cmdArgs := []string{
 		"-x",
@@ -79,21 +81,21 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		"--proxy", proxyURL,
 		"--cookies-from-browser", "chrome",
 		"--no-post-overwrites",
-		"--retries", "10", // Повторить попытку до 10 раз
-		"--fragment-retries", "10", // Повторять попытку при сбое фрагмента
+		"--retries", "10",
+		"--fragment-retries", "10",
 		"--socket-timeout", "30",
 		"-o", outputFile,
 		v.URL,
 	}
 
-	cmd := exec.Command("yt-dlp", cmdArgs...)
+	downloadCmd := exec.Command("yt-dlp", cmdArgs...)
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	downloadCmd.Stdout = os.Stdout
+	downloadCmd.Stderr = os.Stderr
 
 	done := make(chan error)
 	go func() {
-		done <- cmd.Run()
+		done <- downloadCmd.Run()
 	}()
 
 	select {
@@ -103,7 +105,7 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		}
 	case <-time.After(30 * time.Second):
 		fmt.Println("yt-dlp process timed out")
-		cmd.Process.Kill()
+		downloadCmd.Process.Kill()
 	}
 
 	return nil

@@ -6,14 +6,14 @@ import (
 	"strings"
 
 	"bot/internal/core"
-	"bot/lib/e"
+	"bot/pkg/tech/coding"
+	"bot/pkg/tech/e"
 )
 
 const (
-	RndCmd   = "/rnd"
 	HelpCmd  = "/help"
 	StartCmd = "/start"
-	ListCmd  = "/list"
+	ListCmd  = "/lst"
 )
 
 func (l *Listener) doCmd(text string, chatID int, username string) error {
@@ -57,11 +57,18 @@ func (l *Listener) saveAudio(videoURL string, chatID int, username string) (err 
 		return err
 	}
 
-	if err := audio.DownloadSource(); err != nil {
+	if err := audio.DownloadData(); err != nil {
 		return err
 	}
 
-	if err := l.audioStorage.Save(audio, username); err != nil {
+	uuid := coding.EncodeUsernameAndTitle(username, audio.Title)
+
+	if err := l.audioStorage.SaveAudio(audio, username, uuid); err != nil {
+		return err
+	}
+
+	err = l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
+	if err != nil {
 		return err
 	}
 
@@ -84,7 +91,8 @@ func (l *Listener) sendPlaylist(chatID int, username string) error {
 
 	for _, audio := range audios {
 		log.Printf("Sending audio: Title=%s, DataSize=%d bytes", audio.Title, len(audio.Data))
-		if err := l.tg.SendAudio(chatID, audio.Data, audio.Title); err != nil {
+		err := l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
+		if err != nil {
 			return err
 		}
 		log.Printf("Successfully sent audio: %s", audio.Title)

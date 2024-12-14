@@ -1,7 +1,7 @@
 package config
 
 import (
-	"bot/lib/e"
+	"bot/pkg/tech/e"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
