@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"errors"
 	"log"
 	"strconv"
 	"strings"
@@ -9,8 +8,6 @@ import (
 	"bot/internal/core"
 	"bot/pkg/tech/e"
 )
-
-var ErrUnknownEventType = errors.New("unknown event type")
 
 const deleteAudioPrefix = "delete_audio:"
 const confirmDeleteAudioPrefix = "confirm_deletion:"
@@ -23,7 +20,7 @@ func (l *Listener) Process(event core.Event) error {
 	case core.Data:
 		return l.processCallback(event)
 	default:
-		return e.Wrap("can't process unknown message", ErrUnknownEventType)
+		return e.Wrap("can't process unknown message", e.ErrUnknownEventType)
 	}
 }
 
@@ -67,8 +64,6 @@ func (l *Listener) processDeleteMsgCallback(event core.Event, data string,
 
 func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
 	chatID, messageID int) error {
-	log.Println("confirm deletion callback data: ", data)
-
 	title, username, err := l.parseData(data, confirmDeleteAudioPrefix)
 	if err != nil {
 		return err
@@ -86,8 +81,6 @@ func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
 	if err := l.tg.DeleteMessage(chatID, parsedMsgID); err != nil {
 		return err
 	}
-
-	log.Printf("Title=%s, username=%s", title, username)
 
 	if err := l.audioStorage.RemoveAudio(title, username); err != nil {
 		return err
@@ -107,7 +100,7 @@ func (l *Listener) processRefuseDeletionCallback(event core.Event, chatID, messa
 }
 
 func (l *Listener) processMessage(event core.Event) error {
-	if err := l.doCmd(event.Text, event.ChatID, event.Username); err != nil {
+	if err := l.doCmd(event.ChatID, event.Text, event.Username); err != nil {
 		return e.Wrap("can't process message", err)
 	}
 

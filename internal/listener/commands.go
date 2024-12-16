@@ -11,18 +11,23 @@ import (
 )
 
 const (
-	HelpCmd  = "/help"
-	StartCmd = "/start"
-	ListCmd  = "/lst"
+	HelpCmd     = "/help"
+	StartCmd    = "/start"
+	PlaylistCmd = "/lst"
 )
 
-func (l *Listener) doCmd(text string, chatID int, username string) error {
+func (l *Listener) doCmd(chatID int, text, username string) error {
 	text = strings.TrimSpace(text)
 
 	log.Printf("got new command '%s' from %s", text, username)
 
-	if isAddCmd(text) {
-		return l.saveAudio(text, chatID, username)
+	sentLink, err := isAddCmd(text)
+	if err != nil {
+		return l.tg.SendMessage(chatID, msgLinkIsNotFromYT)
+	}
+
+	if sentLink {
+		return l.processVideoURL(chatID, text, username)
 	}
 
 	switch text {
@@ -30,15 +35,15 @@ func (l *Listener) doCmd(text string, chatID int, username string) error {
 		return l.sendHelp(chatID)
 	case StartCmd:
 		return l.sendGreeting(chatID)
-	case ListCmd:
+	case PlaylistCmd:
 		return l.sendPlaylist(chatID, username)
 	default:
 		return l.tg.SendMessage(chatID, msgUnknownCmd)
 	}
 }
 
-func (l *Listener) saveAudio(videoURL string, chatID int, username string) (err error) {
-	defer func() { err = e.Wrap("can't save video", err) }()
+func (l *Listener) processVideoURL(chatID int, videoURL, username string) (err error) {
+	defer func() { err = e.Wrap("can't process video url", err) }()
 
 	audio := &core.Audio{
 		URL: videoURL,
@@ -57,8 +62,18 @@ func (l *Listener) saveAudio(videoURL string, chatID int, username string) (err 
 		return err
 	}
 
-	if err := audio.DownloadData(); err != nil {
+	if err := l.saveAudio(audio, chatID, username); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (l *Listener) saveAudio(audio *core.Audio, chatID int, username string) (err error) {
+	defer func() { err = e.Wrap("can't save audio", err) }()
+
+	if err := audio.ExtractAudio(); err != nil {
+		return l.tg.SendMessage(chatID, msgErrorSavingAudio)
 	}
 
 	uuid := coding.EncodeUsernameAndTitle(username, audio.Title)
@@ -67,12 +82,12 @@ func (l *Listener) saveAudio(videoURL string, chatID int, username string) (err 
 		return err
 	}
 
-	err = l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
-	if err != nil {
+	if err := l.tg.SendMessage(chatID, msgSaved); err != nil {
 		return err
 	}
 
-	if err := l.tg.SendMessage(chatID, msgSaved); err != nil {
+	err = l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
+	if err != nil {
 		return err
 	}
 
@@ -109,12 +124,36 @@ func (l *Listener) sendGreeting(chatID int) error {
 	return l.tg.SendMessage(chatID, msgHello)
 }
 
-func isAddCmd(text string) bool {
+func isAddCmd(text string) (bool, error) {
 	return isURL(text)
 }
 
-func isURL(text string) bool {
+func isURL(text string) (bool, error) {
 	url, err := url.Parse(text)
 
-	return err == nil && url.Host != ""
+	if err == nil && url.Host != "" {
+		if isYTLink(text) {
+			return true, nil
+		} else {
+			return false, e.ErrLinkIsNotFromYT
+		}
+	}
+
+	return false, nil
+}
+
+func isYTLink(text string) bool {
+	if strings.HasPrefix(text, "https://www.youtube.com/") {
+		url, err := url.Parse(text)
+		if err != nil {
+			return false
+		}
+
+		q := url.Query()
+		if videoID := q.Get("v"); videoID != "" {
+			return true
+		}
+	}
+
+	return false
 }

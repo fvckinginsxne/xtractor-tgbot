@@ -13,9 +13,6 @@ func (c *Client) DeleteMessage(chatID int, messageID int) (err error) {
 
 	log.Println("deleting message...")
 
-	log.Println("chat id: ", chatID)
-	log.Println("mesage id: ", messageID)
-
 	url := c.baseURL(deleteMessageMethod)
 
 	values := map[string]int{

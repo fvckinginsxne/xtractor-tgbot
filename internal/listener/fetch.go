@@ -3,10 +3,7 @@ package listener
 import (
 	"bot/internal/core"
 	"bot/pkg/tech/e"
-	"errors"
 )
-
-var ErrNoUpdates = errors.New("no updates")
 
 func (l *Listener) Fetch(limit int) ([]core.Event, error) {
 	updates, err := l.tg.Updates(l.offset, limit)
@@ -15,7 +12,7 @@ func (l *Listener) Fetch(limit int) ([]core.Event, error) {
 	}
 
 	if len(updates) == 0 {
-		return nil, e.Wrap("no updates", ErrNoUpdates)
+		return nil, e.Wrap("no updates", e.ErrNoUpdates)
 	}
 
 	res := make([]core.Event, 0, len(updates))

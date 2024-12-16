@@ -7,6 +7,7 @@ import (
 
 	"bot/internal/core"
 	"bot/internal/listener"
+	"bot/pkg/tech/e"
 )
 
 type Consumer struct {
@@ -24,7 +25,7 @@ func New(listener listener.Listener, batchSize int) *Consumer {
 func (c Consumer) Start() error {
 	for {
 		gotEvents, err := c.listener.Fetch(c.batchSize)
-		if err != nil && !errors.Is(err, listener.ErrNoUpdates) {
+		if err != nil && !errors.Is(err, e.ErrNoUpdates) {
 			log.Printf("consumer: %s", err.Error())
 
 			continue

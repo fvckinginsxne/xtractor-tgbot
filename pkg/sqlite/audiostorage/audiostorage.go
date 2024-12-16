@@ -5,16 +5,18 @@ import (
 	"log"
 
 	"bot/internal/core"
+	"bot/pkg/sqlite/userstorage"
 	"bot/pkg/tech/e"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type AudioStorage struct {
-	db *sql.DB
+	db          *sql.DB
+	userStorage *userstorage.UserStorage
 }
 
-func New(path string) (*AudioStorage, error) {
+func New(path string, userStrorage *userstorage.UserStorage) (*AudioStorage, error) {
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		return nil, e.Wrap("can't open database", err)
@@ -24,7 +26,7 @@ func New(path string) (*AudioStorage, error) {
 		return nil, e.Wrap("can't connect to database", err)
 	}
 
-	return &AudioStorage{db: db}, nil
+	return &AudioStorage{db: db, userStorage: userStrorage}, nil
 }
 
 func (s AudioStorage) Init() error {
@@ -46,7 +48,7 @@ func (s AudioStorage) Init() error {
 }
 
 func (s AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string) error {
-	userID, err := s.getOrCreateUser(username)
+	userID, err := s.userStorage.UserIdByUsername(username)
 	if err != nil {
 		return e.Wrap("can't save audio", err)
 	}
@@ -63,7 +65,7 @@ func (s AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string)
 }
 
 func (s AudioStorage) RemoveAudio(title, username string) error {
-	userId, err := s.getOrCreateUser(username)
+	userId, err := s.userStorage.UserIdByUsername(username)
 	if err != nil {
 		return e.Wrap("can't remove audio", err)
 	}
@@ -81,7 +83,7 @@ func (s AudioStorage) RemoveAudio(title, username string) error {
 }
 
 func (s AudioStorage) IsExists(audio *core.Audio, username string) (bool, error) {
-	userID, err := s.getOrCreateUser(username)
+	userID, err := s.userStorage.UserIdByUsername(username)
 	if err != nil {
 		return false, e.Wrap("can't check if audio is exists", err)
 	}
@@ -106,51 +108,12 @@ func (s AudioStorage) TitleAndUsernameByUUID(uuid string) (title, username strin
 		return "", "", e.Wrap("can't get title by uuid", err)
 	}
 
-	username, err = s.usernameByUserID(userID)
+	username, err = s.userStorage.UsernameByUserID(userID)
 	if err != nil {
 		return "", "", e.Wrap("can't get username by uuid", err)
 	}
 
 	return title, username, nil
-}
-
-func (s AudioStorage) usernameByUserID(userID int64) (string, error) {
-	q := `SELECT username FROM users WHERE id = ?`
-
-	var username string
-
-	if err := s.db.QueryRow(q, userID).Scan(&username); err != nil {
-		return "", e.Wrap("can't get username by user id", err)
-	}
-
-	return username, nil
-}
-
-func (s AudioStorage) getOrCreateUser(username string) (int64, error) {
-	q := `SELECT id FROM users WHERE username = ?`
-
-	var userID int64
-
-	err := s.db.QueryRow(q, username).Scan(&userID)
-	if err == sql.ErrNoRows {
-		log.Println("create new user")
-
-		q = `INSERT INTO users (username) VALUES (?)`
-
-		result, err := s.db.Exec(q, username)
-		if err != nil {
-			return 0, err
-		}
-
-		userID, err = result.LastInsertId()
-		if err != nil {
-			return 0, e.Wrap("can't get last insert id", err)
-		}
-	} else if err != nil {
-		return 0, e.Wrap("can't get user", err)
-	}
-
-	return userID, nil
 }
 
 func (s AudioStorage) Playlist(username string) ([]core.Audio, error) {

@@ -10,7 +10,6 @@ import (
 
 	"bot/pkg/tech/coding"
 	"bot/pkg/tech/e"
-	"bot/pkg/tech/marshaling"
 )
 
 func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username string) (err error) {
@@ -27,7 +26,7 @@ func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username s
 
 	confirmMsg := fmt.Sprintf("Удалить %s из плейлиста?", title)
 
-	reqBody, err := marshaling.DataToJSON((map[string]interface{}{
+	reqBody, err := json.Marshal((map[string]interface{}{
 		"chat_id":      chatID,
 		"text":         confirmMsg,
 		"reply_markup": json.RawMessage(replyMarkup),
@@ -63,9 +62,9 @@ func confirmDeletionMsgReplyMarkup(messageID string, uuid string) ([]byte, error
 		},
 	}
 
-	replyMarkupJSON, err := marshaling.DataToJSON(replyMarkup)
+	replyMarkupJSON, err := json.Marshal(replyMarkup)
 	if err != nil {
-		return nil, e.Wrap("can't create deleton message reply markup", err)
+		return nil, e.Wrap("can't create deletion message reply markup", err)
 	}
 
 	log.Println("reply markup for confirm deletion: ", string(replyMarkupJSON))

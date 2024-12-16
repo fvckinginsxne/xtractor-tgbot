@@ -1,6 +1,16 @@
 package e
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrNoUpdates        = errors.New("no updates")
+	ErrUnknownEventType = errors.New("unknown event type")
+	ErrProcessTimedOut  = errors.New("yt-dlp process timed out")
+	ErrLinkIsNotFromYT  = errors.New("link is not from youtube")
+)
 
 func Wrap(msg string, err error) error {
 	if err == nil {

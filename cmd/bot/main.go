@@ -24,14 +24,14 @@ func main() {
 		log.Fatal("can't init config: ", err)
 	}
 
-	audioStorage, err := audiostorage.New(cfg.StoragePath)
-	if err != nil {
-		log.Fatal("can't connect to audio storage: ", err)
-	}
-
 	userStorage, err := userstorage.New(cfg.StoragePath)
 	if err != nil {
 		log.Fatal("can't connect to user storage")
+	}
+
+	audioStorage, err := audiostorage.New(cfg.StoragePath, userStorage)
+	if err != nil {
+		log.Fatal("can't connect to audio storage: ", err)
 	}
 
 	if err := audioStorage.Init(); err != nil {

@@ -2,6 +2,7 @@ package userstorage
 
 import (
 	"database/sql"
+	"log"
 
 	"bot/pkg/tech/e"
 )
@@ -46,4 +47,42 @@ func (s UserStorage) UsernameByUserID(userID int64) (string, error) {
 	}
 
 	return username, nil
+}
+
+func (s UserStorage) UserIdByUsername(username string) (int64, error) {
+	q := `SELECT id FROM users WHERE username = ?`
+
+	var userID int64
+
+	err := s.db.QueryRow(q, username).Scan(&userID)
+	if err == sql.ErrNoRows {
+		log.Println("create new user")
+
+		userID, err = s.createUser(username)
+		if err != nil {
+			return 0, e.Wrap("can't get userID by username", err)
+		}
+
+		log.Println("user successfully created")
+	} else if err != nil {
+		return 0, e.Wrap("can't get userID by username", err)
+	}
+
+	return userID, nil
+}
+
+func (s UserStorage) createUser(username string) (int64, error) {
+	q := `INSERT INTO users (username) VALUES (?)`
+
+	result, err := s.db.Exec(q, username)
+	if err != nil {
+		return 0, e.Wrap("can't create user", err)
+	}
+
+	userID, err := result.LastInsertId()
+	if err != nil {
+		return 0, e.Wrap("can't create user", err)
+	}
+
+	return userID, nil
 }

@@ -17,40 +17,30 @@ type Audio struct {
 	Title string
 }
 
-func (v *Audio) DownloadData() error {
-	log.Printf("downloading...")
+func (a *Audio) ExtractAudio() error {
+	log.Printf("downloadinga audio...")
 
-	err := v.download()
+	outputFile := fmt.Sprintf("%s.mp3", "output")
+
+	err := a.downloadAudioWithYTDLP(outputFile)
 	if err != nil {
-		return e.Wrap("can't download video", err)
+		return e.Wrap("failed to download audio", err)
 	}
+
+	videoData, err := os.ReadFile(outputFile)
+	if err != nil {
+		return e.Wrap("failed to read downloaded audio file", err)
+	}
+	defer os.Remove(outputFile)
+
+	a.Data = videoData
 
 	log.Printf("audio is succesfully downloaded")
 
 	return nil
 }
 
-func (v *Audio) download() error {
-	outputFile := fmt.Sprintf("%s.mp3", "output")
-
-	err := v.downloadVideoWithYTDLP(outputFile)
-	if err != nil {
-		return e.Wrap("failed to download video", err)
-	}
-
-	videoData, err := os.ReadFile(outputFile)
-	if err != nil {
-		return e.Wrap("failed to read downloaded video file", err)
-	}
-
-	v.Data = videoData
-
-	defer os.Remove(outputFile)
-
-	return nil
-}
-
-func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
+func (a *Audio) downloadAudioWithYTDLP(outputFile string) error {
 	proxyURL := os.Getenv("PROXY_URL")
 
 	log.Println(proxyURL)
@@ -60,21 +50,36 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		return e.Wrap("yt-dlp not found", err)
 	}
 
+	a.Title, err = a.videoTitle(proxyURL)
+	if err != nil {
+		return e.Wrap("can't download audio with yt-dlp", err)
+	}
+
+	if err := a.downloadAudioToFile(outputFile, proxyURL); err != nil {
+		return e.Wrap("can't download audio with yt-dlp", err)
+	}
+
+	return nil
+}
+
+func (a *Audio) videoTitle(proxyURL string) (string, error) {
 	titleCmd := exec.Command(
 		"yt-dlp",
 		"--print", "title",
 		"--proxy", proxyURL,
 		"--cookies-from-browser", "chrome",
-		v.URL,
+		a.URL,
 	)
 
 	titleOutput, err := titleCmd.Output()
 	if err != nil {
-		return e.Wrap("failed to get video title", err)
+		return "", e.Wrap("failed to get video title", err)
 	}
 
-	v.Title = strings.TrimRight(string(titleOutput), "\n")
+	return strings.TrimRight(string(titleOutput), "\n"), nil
+}
 
+func (a *Audio) downloadAudioToFile(outputFile, proxyURL string) error {
 	cmdArgs := []string{
 		"-x",
 		"--audio-format", "mp3",
@@ -85,7 +90,7 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 		"--fragment-retries", "10",
 		"--socket-timeout", "30",
 		"-o", outputFile,
-		v.URL,
+		a.URL,
 	}
 
 	downloadCmd := exec.Command("yt-dlp", cmdArgs...)
@@ -101,11 +106,11 @@ func (v *Audio) downloadVideoWithYTDLP(outputFile string) error {
 	select {
 	case err := <-done:
 		if err != nil {
-			fmt.Printf("yt-dlp command failed: %v\n", err)
+			return e.Wrap("yt-dlp command failed", err)
 		}
 	case <-time.After(30 * time.Second):
-		fmt.Println("yt-dlp process timed out")
 		downloadCmd.Process.Kill()
+		return e.Wrap("yt-dlp process timed out", e.ErrProcessTimedOut)
 	}
 
 	return nil
