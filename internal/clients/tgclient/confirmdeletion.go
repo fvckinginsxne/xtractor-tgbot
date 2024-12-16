@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -26,7 +25,7 @@ func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username s
 
 	confirmMsg := fmt.Sprintf("Удалить %s из плейлиста?", title)
 
-	reqBody, err := json.Marshal((map[string]interface{}{
+	jsonData, err := json.Marshal((map[string]interface{}{
 		"chat_id":      chatID,
 		"text":         confirmMsg,
 		"reply_markup": json.RawMessage(replyMarkup),
@@ -35,11 +34,18 @@ func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username s
 		return err
 	}
 
-	resp, err := http.Post(url.String(), "application/json", bytes.NewBuffer(reqBody))
+	body := bytes.NewBuffer(jsonData)
+
+	req, err := http.NewRequest(http.MethodPost, url.String(), body)
 	if err != nil {
-		log.Fatalf("Ошибка при отправке запроса: %v", err)
+		return err
 	}
-	defer resp.Body.Close()
+
+	req.Header.Set("Content-Type", "application/json")
+
+	if _, err := c.response(req); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -66,8 +72,6 @@ func confirmDeletionMsgReplyMarkup(messageID string, uuid string) ([]byte, error
 	if err != nil {
 		return nil, e.Wrap("can't create deletion message reply markup", err)
 	}
-
-	log.Println("reply markup for confirm deletion: ", string(replyMarkupJSON))
 
 	return replyMarkupJSON, nil
 }

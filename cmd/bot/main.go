@@ -44,6 +44,10 @@ func main() {
 
 	tgclient := tgclient.New(cfg.Hostname, os.Getenv("TOKEN"))
 
+	if err := tgclient.SetCommandsList(); err != nil {
+		log.Fatal("can't set commands list", err)
+	}
+
 	listener := listener.New(tgclient, audioStorage, userStorage)
 
 	consumer := eventconsumer.New(*listener, batchSize)

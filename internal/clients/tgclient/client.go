@@ -2,19 +2,20 @@ package tgclient
 
 import "net/http"
 
-type Client struct {
-	host     string
-	basePath string
-	client   http.Client
-}
-
 const (
 	getUpdatesMethod         = "getUpdates"
 	sendMessageMethod        = "sendMessage"
 	sendAudioMethod          = "sendAudio"
 	deleteMessageMethod      = "deleteMessage"
 	sendCallbackAnswerMethod = "answerCallbackQuery"
+	setCommandsListMethod    = "setMyCommands"
 )
+
+type Client struct {
+	host     string
+	basePath string
+	client   http.Client
+}
 
 func New(host string, token string) *Client {
 	return &Client{

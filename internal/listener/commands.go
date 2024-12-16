@@ -108,7 +108,7 @@ func (l *Listener) sendPlaylist(chatID int, username string) error {
 		log.Printf("Sending audio: Title=%s, DataSize=%d bytes", audio.Title, len(audio.Data))
 		err := l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
 		if err != nil {
-			return err
+			return e.Wrap("can't send playlist", err)
 		}
 		log.Printf("Successfully sent audio: %s", audio.Title)
 	}
@@ -143,7 +143,9 @@ func isURL(text string) (bool, error) {
 }
 
 func isYTLink(text string) bool {
-	if strings.HasPrefix(text, "https://www.youtube.com/") {
+	ytHost := "https://www.youtube.com/"
+
+	if strings.HasPrefix(text, ytHost) {
 		url, err := url.Parse(text)
 		if err != nil {
 			return false

@@ -4,14 +4,11 @@ import (
 	"bot/pkg/tech/e"
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 )
 
 func (c *Client) DeleteMessage(chatID int, messageID int) (err error) {
 	defer func() { err = e.Wrap("can't delete message", err) }()
-
-	log.Println("deleting message...")
 
 	url := c.baseURL(deleteMessageMethod)
 
