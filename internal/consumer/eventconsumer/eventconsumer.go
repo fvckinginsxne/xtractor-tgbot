@@ -45,13 +45,11 @@ func (c Consumer) Start() error {
 
 func (c Consumer) handleEvents(events []core.Event) error {
 	for _, event := range events {
-		log.Printf("got new event: %s", event.Text)
-		log.Println("Type: ", event.Type)
-		log.Println("CallbackQuery: ", event.CallbackQuery)
-
-		if err := c.listener.Process(event); err != nil {
-			log.Printf("can't handle event: %s", err.Error())
-		}
+		go func() {
+			if err := c.listener.Process(event); err != nil {
+				log.Printf("can't handle event: %s", err.Error())
+			}
+		}()
 	}
 
 	return nil

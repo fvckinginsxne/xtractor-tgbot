@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"errors"
 	"log"
 	"net/url"
 	"strings"
@@ -55,7 +56,7 @@ func (l *Listener) processVideoURL(chatID int, videoURL, username string) (err e
 	}
 
 	if isExists {
-		return l.tg.SendMessage(chatID, msgAlreadyExists)
+		return l.tg.SendMessage(chatID, msgAudioAlreadyExists)
 	}
 
 	if err := l.tg.SendMessage(chatID, msgProcessing); err != nil {
@@ -72,7 +73,10 @@ func (l *Listener) processVideoURL(chatID int, videoURL, username string) (err e
 func (l *Listener) saveAudio(audio *core.Audio, chatID int, username string) (err error) {
 	defer func() { err = e.Wrap("can't save audio", err) }()
 
-	if err := audio.ExtractAudio(); err != nil {
+	err = audio.ExtractAudio()
+	if errors.Is(err, e.ErrFileSizeIsTooLarge) {
+		return l.tg.SendMessage(chatID, msgFileIsToLarge)
+	} else if err != nil {
 		return l.tg.SendMessage(chatID, msgErrorSavingAudio)
 	}
 
@@ -105,7 +109,7 @@ func (l *Listener) sendPlaylist(chatID int, username string) error {
 	}
 
 	for _, audio := range audios {
-		log.Printf("Sending audio: Title=%s, DataSize=%d bytes", audio.Title, len(audio.Data))
+		log.Printf("Sending audio: Title=%s", audio.Title)
 		err := l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
 		if err != nil {
 			return e.Wrap("can't send playlist", err)
@@ -143,9 +147,17 @@ func isURL(text string) (bool, error) {
 }
 
 func isYTLink(text string) bool {
-	ytHost := "https://www.youtube.com/"
+	ytBaseLink := "https://www.youtube.com/"
+	ytShortBaseLink := "https://youtu.be/"
 
-	if strings.HasPrefix(text, ytHost) {
+	if strings.HasPrefix(text, ytShortBaseLink) {
+		parts := strings.Split(text, "/")
+		if len(parts) == 4 && len(parts[3]) > 0 {
+			return true
+		}
+	}
+
+	if strings.HasPrefix(text, ytBaseLink) {
 		url, err := url.Parse(text)
 		if err != nil {
 			return false

@@ -2,7 +2,7 @@ package audiostorage
 
 import (
 	"database/sql"
-	"log"
+	"sync"
 
 	"bot/internal/core"
 	"bot/pkg/sqlite/userstorage"
@@ -12,6 +12,7 @@ import (
 )
 
 type AudioStorage struct {
+	mu          sync.RWMutex
 	db          *sql.DB
 	userStorage *userstorage.UserStorage
 }
@@ -29,7 +30,10 @@ func New(path string, userStrorage *userstorage.UserStorage) (*AudioStorage, err
 	return &AudioStorage{db: db, userStorage: userStrorage}, nil
 }
 
-func (s AudioStorage) Init() error {
+func (s *AudioStorage) Init() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	q := `CREATE TABLE IF NOT EXISTS audios (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			url TEXT NOT NULL,
@@ -47,7 +51,10 @@ func (s AudioStorage) Init() error {
 	return nil
 }
 
-func (s AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string) error {
+func (s *AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	userID, err := s.userStorage.UserIdByUsername(username)
 	if err != nil {
 		return e.Wrap("can't save audio", err)
@@ -64,14 +71,14 @@ func (s AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string)
 	return nil
 }
 
-func (s AudioStorage) RemoveAudio(title, username string) error {
+func (s *AudioStorage) RemoveAudio(title, username string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	userId, err := s.userStorage.UserIdByUsername(username)
 	if err != nil {
 		return e.Wrap("can't remove audio", err)
 	}
-
-	log.Println("Audio title: ", title)
-	log.Println("Username: ", username)
 
 	q := `DELETE FROM audios WHERE user_id = ? AND title = ?`
 
@@ -82,7 +89,10 @@ func (s AudioStorage) RemoveAudio(title, username string) error {
 	return nil
 }
 
-func (s AudioStorage) IsExists(audio *core.Audio, username string) (bool, error) {
+func (s *AudioStorage) IsExists(audio *core.Audio, username string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	userID, err := s.userStorage.UserIdByUsername(username)
 	if err != nil {
 		return false, e.Wrap("can't check if audio is exists", err)
@@ -99,7 +109,10 @@ func (s AudioStorage) IsExists(audio *core.Audio, username string) (bool, error)
 	return count > 0, nil
 }
 
-func (s AudioStorage) TitleAndUsernameByUUID(uuid string) (title, username string, err error) {
+func (s *AudioStorage) TitleAndUsernameByUUID(uuid string) (title, username string, err error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	q := `SELECT title, user_id FROM audios WHERE uuid = ?`
 
 	var userID int64
@@ -116,7 +129,10 @@ func (s AudioStorage) TitleAndUsernameByUUID(uuid string) (title, username strin
 	return title, username, nil
 }
 
-func (s AudioStorage) Playlist(username string) ([]core.Audio, error) {
+func (s *AudioStorage) Playlist(username string) ([]core.Audio, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	q := `SELECT a.url, a.data, a.title FROM audios a
 		  JOIN users u ON a.user_id = u.id  WHERE u.username = ?`
 

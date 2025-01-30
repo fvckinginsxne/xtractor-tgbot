@@ -6,10 +6,11 @@ import (
 )
 
 var (
-	ErrNoUpdates        = errors.New("no updates")
-	ErrUnknownEventType = errors.New("unknown event type")
-	ErrProcessTimedOut  = errors.New("yt-dlp process timed out")
-	ErrLinkIsNotFromYT  = errors.New("link is not from youtube")
+	ErrNoUpdates          = errors.New("no updates")
+	ErrUnknownEventType   = errors.New("unknown event type")
+	ErrProcessTimedOut    = errors.New("yt-dlp process timed out")
+	ErrLinkIsNotFromYT    = errors.New("link is not from youtube")
+	ErrFileSizeIsTooLarge = errors.New("file size exceeds 50 MB")
 )
 
 func Wrap(msg string, err error) error {

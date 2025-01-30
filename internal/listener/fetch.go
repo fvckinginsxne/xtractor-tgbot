@@ -65,5 +65,6 @@ func fetchText(update core.Update) string {
 	if update.Message == nil {
 		return ""
 	}
+
 	return update.Message.Text
 }

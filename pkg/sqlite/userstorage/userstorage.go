@@ -24,7 +24,7 @@ func New(path string) (*UserStorage, error) {
 	return &UserStorage{db: db}, nil
 }
 
-func (s UserStorage) Init() error {
+func (s *UserStorage) Init() error {
 	q := `CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			username TEXT NOT NULL
@@ -37,7 +37,7 @@ func (s UserStorage) Init() error {
 	return nil
 }
 
-func (s UserStorage) UsernameByUserID(userID int64) (string, error) {
+func (s *UserStorage) UsernameByUserID(userID int64) (string, error) {
 	q := `SELECT username FROM users WHERE id = ?`
 
 	var username string
@@ -49,7 +49,7 @@ func (s UserStorage) UsernameByUserID(userID int64) (string, error) {
 	return username, nil
 }
 
-func (s UserStorage) UserIdByUsername(username string) (int64, error) {
+func (s *UserStorage) UserIdByUsername(username string) (int64, error) {
 	q := `SELECT id FROM users WHERE username = ?`
 
 	var userID int64
@@ -71,7 +71,7 @@ func (s UserStorage) UserIdByUsername(username string) (int64, error) {
 	return userID, nil
 }
 
-func (s UserStorage) createUser(username string) (int64, error) {
+func (s *UserStorage) createUser(username string) (int64, error) {
 	q := `INSERT INTO users (username) VALUES (?)`
 
 	result, err := s.db.Exec(q, username)
