@@ -1,2 +1,0 @@
-hostname: "api.telegram.org"
-storage_path: "../../data/sqlite/storage.db"
