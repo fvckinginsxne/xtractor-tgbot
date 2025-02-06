@@ -45,7 +45,7 @@ func (l *Listener) processCallback(event core.Event) (err error) {
 
 func (l *Listener) processDeleteMsgCallback(event core.Event, data string,
 	chatID, messageID int) (err error) {
-	defer func() { err = e.Wrap("can't process delete message", err) }()
+	defer func() { err = e.Wrap("can't process message deletion", err) }()
 
 	title, username, err := l.parseData(data, deleteAudioPrefix)
 	if err != nil {
@@ -63,11 +63,11 @@ func (l *Listener) processDeleteMsgCallback(event core.Event, data string,
 
 func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
 	chatID, messageID int) (err error) {
-	defer func() { err = e.Wrap("can't process confirm deletion", err) }()
+	defer func() { err = e.Wrap("can't process deletion confirmation", err) }()
 
-	log.Println("deleting message...")
+	log.Println("deleting audio...")
 
-	title, username, err := l.parseData(data, confirmDeleteAudioPrefix)
+	title, _, err := l.parseData(data, confirmDeleteAudioPrefix)
 	if err != nil {
 		return err
 	}
@@ -85,11 +85,11 @@ func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
 		return err
 	}
 
-	if err := l.audioStorage.RemoveAudio(title, username); err != nil {
+	if err := l.audioStorage.Remove(title); err != nil {
 		return err
 	}
 
-	log.Println("message have successfully deleted")
+	log.Println("audio have successfully deleted")
 
 	return l.tg.SendCallbackAnswer(event.CallbackQuery.ID)
 }
@@ -111,9 +111,14 @@ func (l *Listener) processMessage(event core.Event) error {
 }
 
 func (l *Listener) parseData(data, prefix string) (title, username string, err error) {
-	uuid := parseUUID(data, prefix)
+	hash := parseHash(data, prefix)
 
-	title, username, err = l.audioStorage.TitleAndUsernameByUUID(uuid)
+	title, err = l.audioStorage.Title(hash)
+	if err != nil {
+		return "", "", e.Wrap("can't parse data", err)
+	}
+
+	username, err = l.userStorage.Username(hash)
 	if err != nil {
 		return "", "", e.Wrap("can't parse data", err)
 	}
@@ -132,14 +137,14 @@ func parseMsgID(callbackData string) (int, error) {
 	return msgID, nil
 }
 
-func parseUUID(calbackData, prefix string) string {
+func parseHash(calbackData, prefix string) string {
 	var parts []string
 	if prefix == confirmDeleteAudioPrefix {
 		parts = strings.Split(calbackData, ":")
 		return parts[2]
 	}
 
-	uuid := strings.TrimPrefix(calbackData, prefix)
+	hash := strings.TrimPrefix(calbackData, prefix)
 
-	return uuid
+	return hash
 }

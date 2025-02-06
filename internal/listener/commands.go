@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"bot/internal/core"
+	"bot/internal/service/extractor"
 	"bot/pkg/tech/coding"
 	"bot/pkg/tech/e"
 )
@@ -22,8 +22,8 @@ func (l *Listener) doCmd(chatID int, text, username string) error {
 
 	log.Printf("got new command '%s' from %s", text, username)
 
-	sentLink, err := isAddCmd(text)
-	if err != nil {
+	sentLink, err := isURL(text)
+	if err == e.ErrLinkIsNotFromYT {
 		return l.tg.SendMessage(chatID, msgLinkIsNotFromYT)
 	}
 
@@ -46,11 +46,7 @@ func (l *Listener) doCmd(chatID int, text, username string) error {
 func (l *Listener) processVideoURL(chatID int, videoURL, username string) (err error) {
 	defer func() { err = e.Wrap("can't process video url", err) }()
 
-	audio := &core.Audio{
-		URL: videoURL,
-	}
-
-	isExists, err := l.audioStorage.IsExists(audio, username)
+	isExists, err := l.audioStorage.IsExists(videoURL)
 	if err != nil {
 		return err
 	}
@@ -63,26 +59,37 @@ func (l *Listener) processVideoURL(chatID int, videoURL, username string) (err e
 		return err
 	}
 
-	if err := l.saveAudio(audio, chatID, username); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (l *Listener) saveAudio(audio *core.Audio, chatID int, username string) (err error) {
-	defer func() { err = e.Wrap("can't save audio", err) }()
-
-	err = audio.ExtractAudio()
+	audio, err := extractor.ExtractAudio(videoURL)
 	if errors.Is(err, e.ErrFileSizeIsTooLarge) {
 		return l.tg.SendMessage(chatID, msgFileIsToLarge)
 	} else if err != nil {
 		return l.tg.SendMessage(chatID, msgErrorSavingAudio)
 	}
 
-	uuid := coding.EncodeUsernameAndTitle(username, audio.Title)
+	if err := l.saveAudio(audio, chatID, videoURL, username); err != nil {
+		return err
+	}
 
-	if err := l.audioStorage.SaveAudio(audio, username, uuid); err != nil {
+	return nil
+}
+
+func (l *Listener) saveAudio(audio *extractor.Audio, chatID int,
+	videoURL, username string) (err error) {
+	defer func() { err = e.Wrap("can't save audio", err) }()
+
+	hash := coding.EncodeUsernameAndTitle(username, audio.Title)
+
+	userID, err := l.userStorage.Save(username)
+	if err != nil {
+		return err
+	}
+
+	urlID, err := l.urlstorage.Save(videoURL)
+	if err != nil {
+		return err
+	}
+
+	if err := l.audioStorage.Save(audio, hash, userID, urlID); err != nil {
 		return err
 	}
 
@@ -90,7 +97,7 @@ func (l *Listener) saveAudio(audio *core.Audio, chatID int, username string) (er
 		return err
 	}
 
-	err = l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
+	err = l.tg.SendAudio(chatID, audio.AudioFile, audio.Title, username)
 	if err != nil {
 		return err
 	}
@@ -110,7 +117,7 @@ func (l *Listener) sendPlaylist(chatID int, username string) error {
 
 	for _, audio := range audios {
 		log.Printf("Sending audio: Title=%s", audio.Title)
-		err := l.tg.SendAudio(chatID, audio.Data, audio.Title, username)
+		err := l.tg.SendAudio(chatID, audio.AudioFile, audio.Title, username)
 		if err != nil {
 			return e.Wrap("can't send playlist", err)
 		}
@@ -128,15 +135,11 @@ func (l *Listener) sendGreeting(chatID int) error {
 	return l.tg.SendMessage(chatID, msgHello)
 }
 
-func isAddCmd(text string) (bool, error) {
-	return isURL(text)
-}
-
 func isURL(text string) (bool, error) {
-	url, err := url.Parse(text)
+	url, _ := url.Parse(text)
 
-	if err == nil && url.Host != "" {
-		if isYTLink(text) {
+	if url.Host != "" {
+		if isYT(url) {
 			return true, nil
 		} else {
 			return false, e.ErrLinkIsNotFromYT
@@ -146,27 +149,13 @@ func isURL(text string) (bool, error) {
 	return false, nil
 }
 
-func isYTLink(text string) bool {
-	ytBaseLink := "https://www.youtube.com/"
-	ytShortBaseLink := "https://youtu.be/"
-
-	if strings.HasPrefix(text, ytShortBaseLink) {
-		parts := strings.Split(text, "/")
-		if len(parts) == 4 && len(parts[3]) > 0 {
-			return true
-		}
+func isYT(url *url.URL) bool {
+	if url.Host == "www.youtube.com" || url.Host == "youtube.com" {
+		return url.Path == "/watch" && url.Query().Get("v") != ""
 	}
 
-	if strings.HasPrefix(text, ytBaseLink) {
-		url, err := url.Parse(text)
-		if err != nil {
-			return false
-		}
-
-		q := url.Query()
-		if videoID := q.Get("v"); videoID != "" {
-			return true
-		}
+	if url.Host == "youtu.be" {
+		return url.Path != "" && len(strings.Trim(url.Path, "/")) > 0
 	}
 
 	return false

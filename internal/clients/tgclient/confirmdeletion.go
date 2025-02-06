@@ -14,9 +14,9 @@ import (
 func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username string) (err error) {
 	defer func() { err = e.Wrap("can't confirm message deletion", err) }()
 
-	uuid := coding.EncodeUsernameAndTitle(username, title)
+	hash := coding.EncodeUsernameAndTitle(username, title)
 
-	replyMarkup, err := confirmDeletionMsgReplyMarkup(strconv.Itoa(messageID), uuid)
+	replyMarkup, err := confirmDeletionMsgReplyMarkup(strconv.Itoa(messageID), hash)
 	if err != nil {
 		return err
 	}

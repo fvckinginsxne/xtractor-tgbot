@@ -10,6 +10,7 @@ import (
 	"bot/internal/consumer/eventconsumer"
 	"bot/internal/listener"
 	"bot/pkg/postgres/audiostorage"
+	"bot/pkg/postgres/urlstorage"
 	"bot/pkg/postgres/userstorage"
 )
 
@@ -20,22 +21,33 @@ const (
 func main() {
 	log.Printf("service started")
 
-	if err := godotenv.Load("/Users/madw3y/petprojects/extracter-tgbot/.env"); err != nil {
+	if err := godotenv.Load("/Users/madw3y/petprojects/xtractor-tgbot/.env"); err != nil {
 		log.Fatal("can't loading .env file: ", err)
 	}
 
-	userStorage, err := userstorage.New(os.Getenv("DB_URL"))
+	dbConn := os.Getenv("DB_URL")
+
+	userStorage, err := userstorage.New(dbConn)
 	if err != nil {
 		log.Fatal("can't connect to user storage: ", err)
 	}
 
-	audioStorage, err := audiostorage.New(os.Getenv("DB_URL"), userStorage)
+	urlStorage, err := urlstorage.New(dbConn)
+	if err != nil {
+		log.Fatal("can't connect to user storage: ", err)
+	}
+
+	audioStorage, err := audiostorage.New(dbConn, urlStorage)
 	if err != nil {
 		log.Fatal("can't connect to audio storage: ", err)
 	}
 
 	if err := userStorage.Init(); err != nil {
 		log.Fatal("can't init user storage: ", err)
+	}
+
+	if err := urlStorage.Init(); err != nil {
+		log.Fatal("can't init url storage: ", err)
 	}
 
 	if err := audioStorage.Init(); err != nil {
@@ -48,7 +60,7 @@ func main() {
 		log.Fatal("can't set commands list", err)
 	}
 
-	listener := listener.New(tgclient, audioStorage, userStorage)
+	listener := listener.New(tgclient, audioStorage, userStorage, urlStorage)
 
 	consumer := eventconsumer.New(*listener, batchSize)
 

@@ -3,19 +3,19 @@ package audiostorage
 import (
 	"database/sql"
 
-	"bot/internal/core"
-	"bot/pkg/postgres/userstorage"
+	"bot/internal/service/extractor"
+	"bot/pkg/postgres/urlstorage"
 	"bot/pkg/tech/e"
 
 	_ "github.com/lib/pq"
 )
 
 type AudioStorage struct {
-	db          *sql.DB
-	userStorage *userstorage.UserStorage
+	db         *sql.DB
+	urlStorage *urlstorage.UrlStorage
 }
 
-func New(connURL string, userStrorage *userstorage.UserStorage) (*AudioStorage, error) {
+func New(connURL string, urlStorage *urlstorage.UrlStorage) (*AudioStorage, error) {
 	db, err := sql.Open("postgres", connURL)
 	if err != nil {
 		return nil, e.Wrap("can't open database", err)
@@ -25,19 +25,23 @@ func New(connURL string, userStrorage *userstorage.UserStorage) (*AudioStorage, 
 		return nil, e.Wrap("can't connect to database", err)
 	}
 
-	return &AudioStorage{db: db, userStorage: userStrorage}, nil
+	return &AudioStorage{db: db, urlStorage: urlStorage}, nil
 }
 
 func (s *AudioStorage) Init() error {
 	q := `create table if not exists audios(
 			id serial primary key,
-			url text not null,
-			data bytea not null,
+			audio_file bytea not null,
 			title text not null,
-			uuid text not null,
+			hash text not null,
 			user_id integer not null,
-			foreign key (user_id) references users (id) on delete cascade
-	)`
+			url_id integer not null,
+			foreign key (user_id) references users(id),
+			foreign key (url_id) references urls(id)
+	);
+	create index if not exists idx_audios_title on audios(title);
+	create index if not exists idx_audios_url_id on audios(url_id);
+	`
 
 	if _, err := s.db.Exec(q); err != nil {
 		return e.Wrap("can't create table audios", err)
@@ -46,7 +50,7 @@ func (s *AudioStorage) Init() error {
 	return nil
 }
 
-func (s *AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string) (err error) {
+func (s *AudioStorage) Save(audio *extractor.Audio, hash string, userID, urlID int64) (err error) {
 	defer func() { err = e.Wrap("can't save audio", err) }()
 
 	tx, err := s.db.Begin()
@@ -60,15 +64,10 @@ func (s *AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string
 		}
 	}()
 
-	userID, err := s.userStorage.UserIdByUsername(username)
-	if err != nil {
-		return err
-	}
-
-	q := `insert into audios (url, data, title, uuid, user_id)
+	q := `insert into audios (audio_file, title, hash, user_id, url_id)
 			values ($1, $2, $3, $4, $5)`
 
-	_, err = tx.Exec(q, audio.URL, audio.Data, audio.Title, uuid, userID)
+	_, err = tx.Exec(q, audio.AudioFile, audio.Title, hash, userID, urlID)
 	if err != nil {
 		return err
 	}
@@ -80,7 +79,7 @@ func (s *AudioStorage) SaveAudio(audio *core.Audio, username string, uuid string
 	return nil
 }
 
-func (s *AudioStorage) RemoveAudio(title, username string) (err error) {
+func (s *AudioStorage) Remove(title string) (err error) {
 	defer func() { err = e.Wrap("can't remove audio", err) }()
 
 	tx, err := s.db.Begin()
@@ -94,14 +93,14 @@ func (s *AudioStorage) RemoveAudio(title, username string) (err error) {
 		}
 	}()
 
-	userId, err := s.userStorage.UserIdByUsername(username)
-	if err != nil {
+	if err := s.urlStorage.Remove(tx, title); err != nil {
 		return err
 	}
 
-	q := `delete from audios where user_id=$1 and title=$2`
+	q := `delete from audios where title=$1 and 
+			user_id in (select id from users)`
 
-	if _, err := s.db.Exec(q, userId, title); err != nil {
+	if _, err := tx.Exec(q, title); err != nil {
 		return err
 	}
 
@@ -112,43 +111,34 @@ func (s *AudioStorage) RemoveAudio(title, username string) (err error) {
 	return nil
 }
 
-func (s *AudioStorage) IsExists(audio *core.Audio, username string) (bool, error) {
-	userID, err := s.userStorage.UserIdByUsername(username)
-	if err != nil {
-		return false, e.Wrap("can't check if audio is exists", err)
-	}
-
-	q := `select count(*) from audios where url=$1 and user_id=$2`
+func (s *AudioStorage) IsExists(videoURL string) (bool, error) {
+	q := `select count(*) from audios a join users on a.user_id=users.id 
+			join urls on a.url_id=urls.id where urls.video_url=$1`
 
 	var count int
 
-	if err := s.db.QueryRow(q, audio.URL, userID).Scan(&count); err != nil {
+	if err := s.db.QueryRow(q, videoURL).Scan(&count); err != nil {
 		return false, e.Wrap("can't check if audio is exists", err)
 	}
 
 	return count > 0, nil
 }
 
-func (s *AudioStorage) TitleAndUsernameByUUID(uuid string) (title, username string, err error) {
-	q := `select title, user_id from audios where uuid = $1`
+func (s *AudioStorage) Title(hash string) (string, error) {
+	q := `select title from audios where hash=$1`
 
-	var userID int64
+	var title string
 
-	if err := s.db.QueryRow(q, uuid).Scan(&title, &userID); err != nil {
-		return "", "", e.Wrap("can't get title by uuid", err)
+	if err := s.db.QueryRow(q, hash).Scan(&title); err != nil {
+		return "", e.Wrap("can't get title by hash", err)
 	}
 
-	username, err = s.userStorage.UsernameByUserID(userID)
-	if err != nil {
-		return "", "", e.Wrap("can't get username by uuid", err)
-	}
-
-	return title, username, nil
+	return title, nil
 }
 
-func (s *AudioStorage) Playlist(username string) ([]core.Audio, error) {
-	q := `select a.url, a.data, a.title from audios a
-		  join users u on a.user_id = u.id where u.username = $1`
+func (s *AudioStorage) Playlist(username string) ([]extractor.Audio, error) {
+	q := `select a.audio_file, a.title from audios a
+			join users u on a.user_id = u.id where u.username = $1`
 
 	rows, err := s.db.Query(q, username)
 	if err != nil {
@@ -164,13 +154,13 @@ func (s *AudioStorage) Playlist(username string) ([]core.Audio, error) {
 	return audios, nil
 }
 
-func scanRows(rows *sql.Rows) ([]core.Audio, error) {
-	var audios []core.Audio
+func scanRows(rows *sql.Rows) ([]extractor.Audio, error) {
+	var audios []extractor.Audio
 
 	for rows.Next() {
-		var audio core.Audio
+		var audio extractor.Audio
 
-		err := rows.Scan(&audio.URL, &audio.Data, &audio.Title)
+		err := rows.Scan(&audio.AudioFile, &audio.Title)
 		if err != nil {
 			return nil, e.Wrap("can't scan audio", err)
 		}
