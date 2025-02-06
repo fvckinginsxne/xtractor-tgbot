@@ -15,13 +15,14 @@ import (
 )
 
 const (
-	batchSize = 100
+	BATCH_SIZE     = 100
+	MSG_QUEUE_SIZE = 100
+
+	ENV_PATH = "/Users/madw3y/petprojects/xtractor-tgbot/.env"
 )
 
 func main() {
-	log.Printf("service started")
-
-	if err := godotenv.Load("/Users/madw3y/petprojects/xtractor-tgbot/.env"); err != nil {
+	if err := godotenv.Load(ENV_PATH); err != nil {
 		log.Fatal("can't loading .env file: ", err)
 	}
 
@@ -62,9 +63,7 @@ func main() {
 
 	listener := listener.New(tgclient, audioStorage, userStorage, urlStorage)
 
-	consumer := eventconsumer.New(*listener, batchSize)
+	consumer := eventconsumer.New(*listener, BATCH_SIZE, MSG_QUEUE_SIZE)
 
-	if err := consumer.Start(); err != nil {
-		log.Fatal("service stopped")
-	}
+	consumer.Start()
 }

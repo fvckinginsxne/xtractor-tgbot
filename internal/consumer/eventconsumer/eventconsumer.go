@@ -3,6 +3,7 @@ package eventconsumer
 import (
 	"errors"
 	"log"
+	"sync"
 	"time"
 
 	"bot/internal/core"
@@ -11,18 +12,23 @@ import (
 )
 
 type Consumer struct {
-	listener  listener.Listener
-	batchSize int
+	listener     listener.Listener
+	batchSize    int
+	msgQueueSize int
+	mu           sync.Mutex
+	queues       map[int]chan core.Event
 }
 
-func New(listener listener.Listener, batchSize int) *Consumer {
+func New(listener listener.Listener, batchSize, msgQueueSize int) *Consumer {
 	return &Consumer{
-		listener:  listener,
-		batchSize: batchSize,
+		listener:     listener,
+		batchSize:    batchSize,
+		msgQueueSize: msgQueueSize,
+		queues:       make(map[int]chan core.Event),
 	}
 }
 
-func (c Consumer) Start() error {
+func (c *Consumer) Start() {
 	for {
 		gotEvents, err := c.listener.Fetch(c.batchSize)
 		if err != nil && !errors.Is(err, e.ErrNoUpdates) {
@@ -37,20 +43,30 @@ func (c Consumer) Start() error {
 			continue
 		}
 
-		if err := c.handleEvents(gotEvents); err != nil {
-			log.Print(err.Error())
-		}
+		c.handleEvents(gotEvents)
 	}
 }
 
-func (c Consumer) handleEvents(events []core.Event) error {
+func (c *Consumer) handleEvents(events []core.Event) {
 	for _, event := range events {
-		go func() {
-			if err := c.listener.Process(event); err != nil {
-				log.Printf("can't handle event: %s", err.Error())
-			}
-		}()
-	}
+		c.mu.Lock()
+		userQueue, exists := c.queues[event.ChatID]
+		if !exists {
+			userQueue = make(chan core.Event, c.msgQueueSize)
 
-	return nil
+			c.queues[event.ChatID] = userQueue
+			go c.processUserEvents(userQueue)
+		}
+		c.mu.Unlock()
+
+		userQueue <- event
+	}
+}
+
+func (c *Consumer) processUserEvents(queue chan core.Event) {
+	for event := range queue {
+		if err := c.listener.Process(event); err != nil {
+			log.Print("can't handle event for user", err.Error())
+		}
+	}
 }
