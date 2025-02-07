@@ -10,8 +10,8 @@ import (
 )
 
 const deleteAudioPrefix = "delete_audio:"
-const confirmDeleteAudioPrefix = "confirm_deletion:"
-const refuseDeleteAudioPrefix = "refuse_deletion:"
+const confirmDeletionAudioPrefix = "confirm_deletion:"
+const refuseDeletionAudioPrefix = "refuse_deletion:"
 
 func (l *Listener) Process(event core.Event) error {
 	switch event.Type {
@@ -34,9 +34,9 @@ func (l *Listener) processCallback(event core.Event) (err error) {
 
 	if strings.HasPrefix(data, deleteAudioPrefix) {
 		return l.processDeleteMsgCallback(event, data, chatID, messageID)
-	} else if strings.HasPrefix(data, confirmDeleteAudioPrefix) {
+	} else if strings.HasPrefix(data, confirmDeletionAudioPrefix) {
 		return l.processConfirmDeletionCallback(event, data, chatID, messageID)
-	} else if strings.HasPrefix(data, refuseDeleteAudioPrefix) {
+	} else if strings.HasPrefix(data, refuseDeletionAudioPrefix) {
 		return l.processRefuseDeletionCallback(event, chatID, messageID)
 	}
 
@@ -58,7 +58,7 @@ func (l *Listener) processDeleteMsgCallback(event core.Event, data string,
 		return err
 	}
 
-	return l.tg.SendCallbackAnswer(event.CallbackQuery.ID)
+	return l.tg.SendCallback(event.CallbackQuery.ID)
 }
 
 func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
@@ -67,7 +67,7 @@ func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
 
 	log.Println("deleting audio...")
 
-	title, _, err := l.parseData(data, confirmDeleteAudioPrefix)
+	title, _, err := l.parseData(data, confirmDeletionAudioPrefix)
 	if err != nil {
 		return err
 	}
@@ -91,15 +91,23 @@ func (l *Listener) processConfirmDeletionCallback(event core.Event, data string,
 
 	log.Println("audio have successfully deleted")
 
-	return l.tg.SendCallbackAnswer(event.CallbackQuery.ID)
+	return l.tg.SendCallback(event.CallbackQuery.ID)
 }
 
 func (l *Listener) processRefuseDeletionCallback(event core.Event, chatID, messageID int) error {
-	if err := l.tg.DeleteMessage(chatID, messageID); err != nil {
+	data := event.CallbackQuery.Data
+
+	log.Print(data)
+
+	hash := parseHash(data, refuseDeletionAudioPrefix)
+
+	log.Print(hash)
+
+	if err := l.tg.RestoreDeletionMarkup(chatID, messageID, hash); err != nil {
 		return e.Wrap("can't process refuse deletion", err)
 	}
 
-	return l.tg.SendCallbackAnswer(event.CallbackQuery.ID)
+	return l.tg.SendCallback(event.CallbackQuery.ID)
 }
 
 func (l *Listener) processMessage(event core.Event) error {
@@ -139,7 +147,7 @@ func parseMsgID(callbackData string) (int, error) {
 
 func parseHash(calbackData, prefix string) string {
 	var parts []string
-	if prefix == confirmDeleteAudioPrefix {
+	if prefix == confirmDeletionAudioPrefix {
 		parts = strings.Split(calbackData, ":")
 		return parts[2]
 	}

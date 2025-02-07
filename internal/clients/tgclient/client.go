@@ -3,12 +3,13 @@ package tgclient
 import "net/http"
 
 const (
-	getUpdatesMethod         = "getUpdates"
-	sendMessageMethod        = "sendMessage"
-	sendAudioMethod          = "sendAudio"
-	deleteMessageMethod      = "deleteMessage"
-	sendCallbackAnswerMethod = "answerCallbackQuery"
-	setCommandsListMethod    = "setMyCommands"
+	getUpdatesMethod             = "getUpdates"
+	sendMessageMethod            = "sendMessage"
+	sendAudioMethod              = "sendAudio"
+	deleteMessageMethod          = "deleteMessage"
+	sendCallbackAnswerMethod     = "answerCallbackQuery"
+	setCommandsListMethod        = "setMyCommands"
+	editMessageReplyMarkupMethod = "editMessageReplyMarkup"
 )
 
 type Client struct {

@@ -8,7 +8,7 @@ import (
 	"bot/pkg/tech/e"
 )
 
-func (c *Client) SendCallbackAnswer(callbackID string) (err error) {
+func (c *Client) SendCallback(callbackID string) (err error) {
 	defer func() { err = e.Wrap("can't send callback answer", err) }()
 
 	url := c.baseURL(sendCallbackAnswerMethod)

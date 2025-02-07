@@ -15,9 +15,9 @@ import (
 func (c *Client) SendAudio(chatID int, audio []byte, title, username string) (err error) {
 	defer func() { err = e.Wrap("can't send audio", err) }()
 
-	uuid := coding.EncodeUsernameAndTitle(username, title)
+	hash := coding.EncodeUsernameAndTitle(username, title)
 
-	deleteBtn, err := deleteMsgReplyMarkup(uuid)
+	deleteBtn, err := deleteMsgReplyMarkup(hash)
 	if err != nil {
 		return err
 	}

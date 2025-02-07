@@ -21,13 +21,11 @@ func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username s
 		return err
 	}
 
-	url := c.baseURL(sendMessageMethod)
-
-	confirmMsg := fmt.Sprintf("Удалить %s из плейлиста?", title)
+	url := c.baseURL(editMessageReplyMarkupMethod)
 
 	jsonData, err := json.Marshal((map[string]interface{}{
 		"chat_id":      chatID,
-		"text":         confirmMsg,
+		"message_id":   messageID,
 		"reply_markup": json.RawMessage(replyMarkup),
 	}))
 	if err != nil {
@@ -50,8 +48,44 @@ func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username s
 	return nil
 }
 
-func confirmDeletionMsgReplyMarkup(messageID string, uuid string) ([]byte, error) {
-	confirmCallbackData := fmt.Sprintf("confirm_deletion:%s:%s", messageID, uuid)
+func (c *Client) RestoreDeletionMarkup(chatID, messageID int, hash string) (err error) {
+	defer func() { err = e.Wrap("can't restore original keyboard", err) }()
+
+	replyMarkup, err := deleteMsgReplyMarkup(hash)
+	if err != nil {
+		return err
+	}
+
+	url := c.baseURL(editMessageReplyMarkupMethod)
+
+	jsonData, err := json.Marshal((map[string]interface{}{
+		"chat_id":      chatID,
+		"message_id":   messageID,
+		"reply_markup": json.RawMessage(replyMarkup),
+	}))
+	if err != nil {
+		return err
+	}
+
+	body := bytes.NewBuffer(jsonData)
+
+	req, err := http.NewRequest(http.MethodPost, url.String(), body)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	if _, err := c.response(req); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func confirmDeletionMsgReplyMarkup(messageID string, hash string) ([]byte, error) {
+	confirmCallbackData := fmt.Sprintf("confirm_deletion:%s:%s", messageID, hash)
+	refuseCallbackData := fmt.Sprintf("refuse_deletion:%s", hash)
 
 	replyMarkup := map[string]interface{}{
 		"inline_keyboard": [][]map[string]string{
@@ -62,7 +96,7 @@ func confirmDeletionMsgReplyMarkup(messageID string, uuid string) ([]byte, error
 				},
 				{
 					"text":          "Нет",
-					"callback_data": "refuse_deletion:",
+					"callback_data": refuseCallbackData,
 				},
 			},
 		},
