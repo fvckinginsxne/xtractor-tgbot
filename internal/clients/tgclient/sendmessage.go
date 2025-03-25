@@ -1,11 +1,10 @@
 package tgclient
 
 import (
+	"bot/internal/tech/e"
 	"net/http"
 	"net/url"
 	"strconv"
-
-	"bot/pkg/tech/e"
 )
 
 func (c *Client) SendMessage(chatID int, text string) (err error) {

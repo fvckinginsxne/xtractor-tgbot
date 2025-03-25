@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 
@@ -9,20 +10,23 @@ import (
 	"bot/internal/clients/tgclient"
 	"bot/internal/consumer/eventconsumer"
 	"bot/internal/listener"
-	"bot/pkg/postgres/audiostorage"
-	"bot/pkg/postgres/urlstorage"
-	"bot/pkg/postgres/userstorage"
+	"bot/internal/postgres/audiostorage"
+	"bot/internal/postgres/urlstorage"
+	"bot/internal/postgres/userstorage"
 )
 
 const (
-	BATCH_SIZE     = 100
-	MSG_QUEUE_SIZE = 100
-
-	ENV_PATH = "/Users/madw3y/petprojects/xtractor-tgbot/.env"
+	batchSize    = 100
+	msgQueueSize = 100
 )
 
 func main() {
-	if err := godotenv.Load(ENV_PATH); err != nil {
+	var envPath string
+
+	flag.StringVar(&envPath, "env-path", ".env", "path to .env file")
+	flag.Parse()
+
+	if err := godotenv.Load(envPath); err != nil {
 		log.Fatal("can't loading .env file: ", err)
 	}
 
@@ -63,7 +67,7 @@ func main() {
 
 	listener := listener.New(tgclient, audioStorage, userStorage, urlStorage)
 
-	consumer := eventconsumer.New(*listener, BATCH_SIZE, MSG_QUEUE_SIZE)
+	consumer := eventconsumer.New(*listener, batchSize, msgQueueSize)
 
 	consumer.Start()
 }

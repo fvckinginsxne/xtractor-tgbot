@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"bot/internal/service/extractor"
-	"bot/pkg/tech/coding"
-	"bot/pkg/tech/e"
+	"bot/internal/tech/coding"
+	"bot/internal/tech/e"
 )
 
 const (

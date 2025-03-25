@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"bot/internal/core"
-	"bot/pkg/tech/e"
+	"bot/internal/tech/e"
 )
 
 const deleteAudioPrefix = "delete_audio:"

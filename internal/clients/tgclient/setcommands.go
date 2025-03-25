@@ -1,11 +1,10 @@
 package tgclient
 
 import (
+	"bot/internal/tech/e"
 	"bytes"
 	"encoding/json"
 	"net/http"
-
-	"bot/pkg/tech/e"
 )
 
 func (c *Client) SetCommandsList() (err error) {

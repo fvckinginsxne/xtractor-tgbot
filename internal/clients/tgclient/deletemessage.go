@@ -1,7 +1,7 @@
 package tgclient
 
 import (
-	"bot/pkg/tech/e"
+	"bot/internal/tech/e"
 	"bytes"
 	"encoding/json"
 	"net/http"

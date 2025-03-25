@@ -1,13 +1,13 @@
 package tgclient
 
 import (
+	"bot/internal/tech/e"
 	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
 
 	"bot/internal/core"
-	"bot/pkg/tech/e"
 )
 
 func (c *Client) Updates(offset, limit int) (updates []core.Update, err error) {

@@ -2,7 +2,7 @@ package listener
 
 import (
 	"bot/internal/core"
-	"bot/pkg/tech/e"
+	"bot/internal/tech/e"
 )
 
 func (l *Listener) Fetch(limit int) ([]core.Event, error) {

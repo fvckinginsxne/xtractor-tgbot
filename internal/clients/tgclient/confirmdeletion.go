@@ -1,14 +1,13 @@
 package tgclient
 
 import (
+	"bot/internal/tech/coding"
+	"bot/internal/tech/e"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"bot/pkg/tech/coding"
-	"bot/pkg/tech/e"
 )
 
 func (c *Client) ConfirmDeletionMessage(chatID, messageID int, title, username string) (err error) {

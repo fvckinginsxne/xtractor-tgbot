@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"bot/pkg/tech/e"
+	"bot/internal/tech/e"
 )
 
 type Audio struct {

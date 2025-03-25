@@ -1,12 +1,11 @@
 package tgclient
 
 import (
+	"bot/internal/tech/e"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
-
-	"bot/pkg/tech/e"
 )
 
 func (c *Client) response(req *http.Request) (*http.Response, error) {

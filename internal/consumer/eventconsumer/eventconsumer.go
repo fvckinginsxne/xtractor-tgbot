@@ -8,7 +8,7 @@ import (
 
 	"bot/internal/core"
 	"bot/internal/listener"
-	"bot/pkg/tech/e"
+	"bot/internal/tech/e"
 )
 
 type Consumer struct {

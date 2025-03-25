@@ -2,9 +2,9 @@ package listener
 
 import (
 	"bot/internal/clients/tgclient"
-	"bot/pkg/postgres/audiostorage"
-	"bot/pkg/postgres/urlstorage"
-	"bot/pkg/postgres/userstorage"
+	"bot/internal/postgres/audiostorage"
+	"bot/internal/postgres/urlstorage"
+	"bot/internal/postgres/userstorage"
 )
 
 type Listener struct {

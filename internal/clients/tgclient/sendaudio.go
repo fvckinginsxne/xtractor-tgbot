@@ -1,15 +1,14 @@
 package tgclient
 
 import (
+	"bot/internal/tech/coding"
+	"bot/internal/tech/e"
 	"bytes"
 	"encoding/json"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"strconv"
-
-	"bot/pkg/tech/coding"
-	"bot/pkg/tech/e"
 )
 
 func (c *Client) SendAudio(chatID int, audio []byte, title, username string) (err error) {
